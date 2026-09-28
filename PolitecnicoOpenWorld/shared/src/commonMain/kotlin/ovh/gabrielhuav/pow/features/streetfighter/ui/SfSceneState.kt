@@ -1,6 +1,7 @@
 package ovh.gabrielhuav.pow.features.streetfighter.ui
 
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFighter
+import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFinisherVisual
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFireball
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfHitSplash
 
@@ -37,4 +38,7 @@ interface SfSceneState {
     val specialSubtitleHud: String?
     val specialSubtitleUntilMs: Long
     val specialSubtitleStartMs: Long
+
+    /** 🆕 REMATE FINAL: efectos del "ACABALO"/cinemática. Default null = sin remate. */
+    val finisherVisual: SfFinisherVisual? get() = null
 }
