@@ -198,4 +198,16 @@ class SfFinisherTest {
         assertEquals(3, tr.progress(tzitzi, 1360L), "direcciones completas, falta el botón")
         assertEquals(0, tr.progress(tzitzi, 9999L), "fuera de la ventana se pierde")
     }
+
+    @Test
+    fun `ningun Extraordinario usa TALK`() {
+        // Los cuadros de TALK traen el origen en y=128 en lugar de y=224 (en los 18 packs):
+        // el peleador se dibuja hundido 96 px en el piso. Hallazgo H-1 del QA.
+        for (def in SfFinisherCatalog.all) {
+            for (beat in def.beats) {
+                assertTrue(beat.attackerState != SfFighterState.TALK, "${def.fighter}: TALK en el guion")
+                assertTrue(beat.victimState != SfFighterState.TALK, "${def.fighter}: TALK en la víctima")
+            }
+        }
+    }
 }

@@ -237,7 +237,10 @@ object SfFinisherCatalog {
             durationMs = 5200L,
             attackerGapPx = 62f,
             beats = listOf(
-                SfFinisherBeat(0L, attackerState = SfFighterState.TALK, victimState = SfFighterState.STUN,
+                // Abre con la BURLA, no con TALK: los cuadros de TALK de TODOS los packs traen el
+                // origen en y=128 (los pies están en y=224) y el sprite se hunde 96 px en el piso.
+                // Defecto preexistente de datos; ver el test "ningun Extraordinario usa TALK".
+                SfFinisherBeat(0L, attackerState = SfFighterState.TAUNT, victimState = SfFighterState.STUN,
                     attackerVoice = "special_charro_negro"),
                 SfFinisherBeat(1000L, attackerState = SfFighterState.HEAVY_PUNCH,
                     victimState = SfFighterState.HURT_BODY_HEAVY, sfx = "heavy-punch-hit", victimHurtVoice = true),
