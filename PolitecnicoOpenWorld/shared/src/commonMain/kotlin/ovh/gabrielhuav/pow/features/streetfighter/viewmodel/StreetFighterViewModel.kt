@@ -897,12 +897,16 @@ open class StreetFighterViewModel(
             score0 = s.playerScore, score1 = s.cpuScore,
             winner = s.winnerIndex, battleEnded = s.battleEnded,
         )
+        // 🆕 EXAMEN EXTRAORDINARIO: abre/reinicia el intento (el rival siempre "reprobado").
+        tickExtraordinario(sim, now)
 
         // El timer NO corre durante el banner "RONDA N / PELEA".
         // 🆕 (2026-07-18j) Tampoco en SHOWCASE: el guion completo (~68 s con la metamorfosis de
         // La Presidenta) supera los ~66 s reales del timer → TIME OVER cortaba los pasos finales.
         // 🆕 REMATE: el reloj tampoco corre durante "ACABALO" ni la cinemática.
-        if (!sim.battleEnded && !showcaseMode && now >= roundIntroUntilMs && !remate.isActive) updateTimer(sim, now)
+        if (!sim.battleEnded && !showcaseMode && now >= roundIntroUntilMs && !remate.isActive && !s.extraordinarioActive) {
+            updateTimer(sim, now)
+        }
 
         if (online) {
             platformApplyRemoteSnapshot(sim, now, dt)
@@ -1042,6 +1046,7 @@ open class StreetFighterViewModel(
             specialSubtitleStartMs = if (subActive) value.specialSubtitleStartMs else 0L,
             // 🆕 REMATE: velo/tinte/partículas/rótulos del "ACABALO" y de la cinemática.
             finisherVisual = this@StreetFighterViewModel.remateVisual(sim, now),
+            extraordinarioHud = this@StreetFighterViewModel.extraordinarioHud(sim, now),
         )
     }
 
@@ -1981,7 +1986,7 @@ open class StreetFighterViewModel(
     )
     internal fun resetInternals() {
         gameNow = 0L
-        remate.reset() // 🆕 REMATE: combate nuevo / revancha sin restos del remate anterior
+        remate.resetAll() // 🆕 REMATE: combate nuevo / revancha / salir del Examen Extraordinario
         lastRealMs = sfElapsedRealtime()
         lastHpSeen.fill(-1)
         lastDamageMs = 0L

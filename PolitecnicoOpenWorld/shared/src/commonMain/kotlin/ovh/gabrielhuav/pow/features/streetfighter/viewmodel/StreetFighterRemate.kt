@@ -52,6 +52,13 @@ internal class SfRemateRuntime {
     /** Último cuadro de la cinemática: se queda en pantalla tras terminar (víctima desaparecida). */
     var lastVisual: SfFinisherVisual? = null
 
+    // ---- 🆕 EXAMEN EXTRAORDINARIO (modo práctica; ver StreetFighterExtraordinario.kt) ----
+    // NO se borran en reset(): reset() se usa ENTRE intentos y estos sobreviven al intento.
+    /** gameNow en que se reinicia el intento (0 = no hay reinicio pendiente). */
+    var practiceResetAtMs = 0L
+    /** "" | APROBADO | REPROBADO (mensaje del último intento). */
+    var practiceFlash = ""
+
     /** Ventana o cinemática en curso: el reloj y el detector de estancamiento se pausan. */
     val isActive: Boolean get() = phase == SfRematePhase.WINDOW || phase == SfRematePhase.CINEMATIC
 
@@ -69,6 +76,13 @@ internal class SfRemateRuntime {
         tracker.reset()
         lastVisual = null
     }
+
+    /** reset() + lo del Examen Extraordinario (combate nuevo o salida del modo). */
+    fun resetAll() {
+        reset()
+        practiceResetAtMs = 0L
+        practiceFlash = ""
+    }
 }
 
 // ------------------------------------------------------------------
@@ -85,6 +99,11 @@ internal fun StreetFighterViewModel.remateOnRoundEnd(
     now: Long,
     outcome: SfRoundOutcome,
 ): Boolean {
+    // 🆕 EXAMEN EXTRAORDINARIO: la ronda NUNCA se cierra; cada intento se califica y se reinicia.
+    if (_state.value.extraordinarioActive) {
+        onExtraordinarioRoundEnd(now)
+        return true
+    }
     when (remate.phase) {
         SfRematePhase.WINDOW -> {
             // Lo remató con un golpe NORMAL durante la ventana: KO clásico, se quita el velo.
@@ -114,11 +133,16 @@ private fun StreetFighterViewModel.remateEligible(
     return SfFinisherCatalog.forFighter(sim.fighter(winnerIdx).id) != null
 }
 
-private fun StreetFighterViewModel.openRemateWindow(
+/**
+ * Abre la ventana "ACABALO". Con [practice] (Examen Extraordinario) la ventana no vence y la
+ * CPU no participa: el humano (índice 0) es siempre quien remata.
+ */
+internal fun StreetFighterViewModel.openRemateWindow(
     sim: StreetFighterViewModel.Sim,
     winnerIdx: Int,
     now: Long,
     outcome: SfRoundOutcome,
+    practice: Boolean = false,
 ) {
     val victimIdx = 1 - winnerIdx
     val s = _state.value
@@ -128,13 +152,13 @@ private fun StreetFighterViewModel.openRemateWindow(
     remate.victimIdx = victimIdx
     remate.def = SfFinisherCatalog.forFighter(sim.fighter(winnerIdx).id)
     remate.startMs = now
-    remate.windowUntilMs = now + SfFinisher.WINDOW_MS
+    remate.windowUntilMs = if (practice) Long.MAX_VALUE else now + SfFinisher.WINDOW_MS
     remate.outcomeOnExpire = outcome
 
     // ¿La CPU ganadora va a rematar? (el humano decide con su comando)
     val cpuWinner = s.aiVsAi || winnerIdx == 1
     val difficulty = if (s.aiVsAi) SfCpuDifficulty.PESADILLA else s.cpuDifficulty
-    remate.cpuWillFinish = cpuWinner && Random.nextFloat() < SfFinisherCpu.chance(difficulty)
+    remate.cpuWillFinish = !practice && cpuWinner && Random.nextFloat() < SfFinisherCpu.chance(difficulty)
     remate.cpuReadyAtMs = now + SfFinisherCpu.THINK_MS
 
     // El ganador todavía NO celebra (con victory=true el IDLE lo mandaría a VICTORY y no podría moverse).
@@ -217,6 +241,7 @@ internal fun StreetFighterViewModel.remateGateInput(
 /** Vence la ventana sin remate → KO clásico. Se llama cada tick después de mover a los peleadores. */
 internal fun StreetFighterViewModel.tickRemateWindow(sim: StreetFighterViewModel.Sim, now: Long) {
     if (remate.phase != SfRematePhase.WINDOW || now < remate.windowUntilMs) return
+    if (_state.value.extraordinarioActive) return // en el examen no hay límite de tiempo
     val w = remate.winnerIdx
     val v = remate.victimIdx
     val outcome = remate.outcomeOnExpire
@@ -335,6 +360,8 @@ private fun StreetFighterViewModel.finishRemate(sim: StreetFighterViewModel.Sim,
 // Visual que se publica en el estado (lo pinta SfSceneRenderer)
 // ------------------------------------------------------------------
 
+internal fun StreetFighterViewModel.remateMoveNameFor(def: SfFinisherDef): String = remateMoveName(def)
+
 internal fun StreetFighterViewModel.remateVisual(sim: StreetFighterViewModel.Sim, now: Long): SfFinisherVisual? =
     when (remate.phase) {
         SfRematePhase.NONE -> null
@@ -350,7 +377,9 @@ internal fun StreetFighterViewModel.remateVisual(sim: StreetFighterViewModel.Sim
             }
             // La pista solo se muestra si quien remata es el HUMANO (a la CPU no le hace falta).
             val humanWinner = remate.winnerIdx == 0 && !_state.value.aiVsAi
-            val hint = if (SfFinisher.SHOW_COMMAND_HINT && humanWinner) {
+            // En el Examen Extraordinario los pasos van en su propio panel (botón PASOS).
+            val practice = _state.value.extraordinarioActive
+            val hint = if (SfFinisher.SHOW_COMMAND_HINT && humanWinner && !practice) {
                 remate.def?.command?.hudHint(english).orEmpty()
             } else {
                 ""
@@ -367,7 +396,7 @@ internal fun StreetFighterViewModel.remateVisual(sim: StreetFighterViewModel.Sim
 private fun StreetFighterViewModel.remateEnglish(): Boolean = environment.languageTag.startsWith("en")
 
 private fun StreetFighterViewModel.remateHeadline(): String =
-    if (remateEnglish()) "FINAL MOVE" else "MOVIMIENTO FINAL"
+    if (remateEnglish()) "EXTRAORDINARY" else "EXTRAORDINARIO"
 
 private fun StreetFighterViewModel.remateMoveName(def: SfFinisherDef): String =
     if (remateEnglish()) def.nameEn else def.nameEs

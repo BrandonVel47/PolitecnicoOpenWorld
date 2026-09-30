@@ -151,4 +151,51 @@ class SfFinisherTest {
         assertEquals(1f, SfFinisherCpu.chance(SfCpuDifficulty.PESADILLA))
         assertTrue(SfFinisherCpu.chance(SfCpuDifficulty.BASICA) < SfFinisherCpu.chance(SfCpuDifficulty.NORMAL))
     }
+
+    // ── 🆕 EXAMEN EXTRAORDINARIO ──
+
+    @Test
+    fun `las flechas del panel se voltean segun el lado`() {
+        // Tzitzimime: ABAJO ABAJO ATRAS + B
+        assertEquals(listOf("↓", "↓", "←", "B"), tzitzi.physicalSteps(facingRight = true), "mirando a la derecha")
+        assertEquals(listOf("↓", "↓", "→", "B"), tzitzi.physicalSteps(facingRight = false), "mirando a la izquierda")
+        val charro = SfFinisherCatalog.forFighter(SfFighterId.CHARRO_NEGRO)!!.command // → ↓ → + Y
+        assertEquals(listOf("←", "↓", "←", "Y"), charro.physicalSteps(facingRight = false), "adelante = hacia el rival")
+    }
+
+    @Test
+    fun `la jerga de CERCA queda pegada al rival y del lado del atacante`() {
+        val z = SfFinisherRange.CERCA.zone(victimX = 300f, attackerOnLeft = true, stageMin = 50f, stageMax = 700f)
+        assertEquals(300f - 105f, z.minX, "borde lejano = 105 px")
+        assertEquals(300f - SfFinisherPractice.MIN_GAP_PX, z.maxX, "no se mete debajo del rival")
+        val zr = SfFinisherRange.CERCA.zone(victimX = 300f, attackerOnLeft = false, stageMin = 50f, stageMax = 700f)
+        assertTrue(zr.minX > 300f && zr.maxX > zr.minX, "del lado derecho también")
+    }
+
+    @Test
+    fun `la jerga de LEJOS se recorta al escenario`() {
+        val z = SfFinisherRange.LEJOS.zone(victimX = 300f, attackerOnLeft = true, stageMin = 50f, stageMax = 700f)
+        assertEquals(50f, z.minX, "hasta la pared")
+        assertEquals(300f - 145f, z.maxX, "empieza a 145 px")
+        // Rival pegado a la pared izquierda: no hay espacio de ese lado → zona vacía (ancho 0)
+        val pegado = SfFinisherRange.LEJOS.zone(victimX = 100f, attackerOnLeft = true, stageMin = 50f, stageMax = 700f)
+        assertEquals(0f, pegado.width, "sin espacio no se tiende jerga")
+    }
+
+    @Test
+    fun `el progreso palomea las direcciones en orden`() {
+        val tr = SfFinisherInputTracker()
+        assertEquals(0, tr.progress(tzitzi, 1000L), "nada todavía")
+        tr.feed(down, 1000L, tzitzi)
+        assertEquals(1, tr.progress(tzitzi, 1000L), "primer ↓")
+        tr.feed(neutral, 1060L, tzitzi)
+        tr.feed(back, 1120L, tzitzi) // ← antes del segundo ↓: no avanza
+        assertEquals(1, tr.progress(tzitzi, 1120L), "orden incorrecto")
+        tr.feed(neutral, 1180L, tzitzi)
+        tr.feed(down, 1240L, tzitzi)
+        tr.feed(neutral, 1300L, tzitzi)
+        tr.feed(back, 1360L, tzitzi)
+        assertEquals(3, tr.progress(tzitzi, 1360L), "direcciones completas, falta el botón")
+        assertEquals(0, tr.progress(tzitzi, 9999L), "fuera de la ventana se pierde")
+    }
 }

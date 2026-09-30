@@ -62,6 +62,26 @@ enum class SfFinisherRange(val minPx: Float, val maxPx: Float, val hudEs: String
     ;
 
     fun contains(distancePx: Float): Boolean = distancePx >= minPx && distancePx <= maxPx
+
+    /**
+     * 🆕 EXAMEN EXTRAORDINARIO: tramo del PISO (x de mundo) donde tiene que pararse el
+     * atacante para que el comando cuente — es donde se tiende la jerga. Se recorta al
+     * escenario y nunca se mete debajo de la víctima ([SfFinisherPractice.MIN_GAP_PX]).
+     */
+    fun zone(victimX: Float, attackerOnLeft: Boolean, stageMin: Float, stageMax: Float): SfFinisherZone {
+        val near = maxOf(minPx, SfFinisherPractice.MIN_GAP_PX)
+        val far = minOf(maxPx, stageMax - stageMin)
+        val (a, b) = if (attackerOnLeft) (victimX - far) to (victimX - near) else (victimX + near) to (victimX + far)
+        val lo = a.coerceIn(stageMin, stageMax)
+        val hi = b.coerceIn(stageMin, stageMax)
+        return SfFinisherZone(minX = minOf(lo, hi), maxX = maxOf(lo, hi))
+    }
+}
+
+/** 🆕 Tramo del piso [minX, maxX] (x de mundo) donde se tiende la jerga. */
+data class SfFinisherZone(val minX: Float, val maxX: Float) {
+    val width: Float get() = maxX - minX
+    fun contains(x: Float): Boolean = x in minX..maxX
 }
 
 data class SfFinisherCommand(
@@ -73,6 +93,24 @@ data class SfFinisherCommand(
         require(directions.all { it.isDirection }) { "Las direcciones del comando deben ser direcciones" }
         require(!button.isDirection) { "El remate termina con un BOTÓN" }
     }
+
+    /**
+     * 🆕 EXAMEN EXTRAORDINARIO: el comando con FLECHAS FÍSICAS para el panel de pasos.
+     * El input ya es relativo (ADELANTE = hacia el rival), así que el comando funciona igual
+     * de los dos lados; lo único que cambia es CÓMO SE DIBUJA: si el peleador mira a la
+     * IZQUIERDA (está a la derecha del rival), ADELANTE se pinta ← y ATRÁS →.
+     * El último elemento es la letra del botón.
+     */
+    fun physicalSteps(facingRight: Boolean): List<String> =
+        directions.map { d ->
+            when (d) {
+                SfFinisherToken.UP -> "↑"
+                SfFinisherToken.DOWN -> "↓"
+                SfFinisherToken.FORWARD -> if (facingRight) "→" else "←"
+                SfFinisherToken.BACK -> if (facingRight) "←" else "→"
+                else -> ""
+            }
+        } + button.hudEs
 
     /** Pista para la fuente arcade del HUD (solo A-Z, 0-9 y espacio): "ABAJO ABAJO ATRAS B CERCA". */
     fun hudHint(english: Boolean): String {
@@ -234,6 +272,19 @@ class SfFinisherInputTracker(private val windowMs: Long = SfFinisher.INPUT_WINDO
     fun reset() {
         history.clear()
         lastZone = Zone.NEUTRAL
+    }
+
+    /**
+     * 🆕 EXAMEN EXTRAORDINARIO: cuántas direcciones de [command] ya están metidas EN ORDEN
+     * dentro de la ventana (para palomear el panel de pasos). No consume nada.
+     */
+    fun progress(command: SfFinisherCommand, now: Long): Int {
+        var j = 0
+        for ((token, at) in history) {
+            if (now - at > windowMs) continue
+            if (j < command.directions.size && token == command.directions[j]) j++
+        }
+        return j
     }
 
     /** Direcciones registradas (para tests/depuración). */
@@ -445,3 +496,40 @@ object SfFinisherVisuals {
         }
     }
 }
+
+/**
+ * 🆕 EXAMEN EXTRAORDINARIO: modo para practicar los Extraordinarios. El rival ya está
+ * "reprobado" (de pie, mareado, 0 de vida), sin reloj ni límite de tiempo.
+ */
+object SfFinisherPractice {
+    /** Tras un Extraordinario completo, cuánto se espera antes de reiniciar. */
+    const val RESET_AFTER_SUCCESS_MS = 2200L
+
+    /** Tras rematar con un golpe normal (KO clásico), cuánto se espera antes de reiniciar. */
+    const val RESET_AFTER_FAIL_MS = 1500L
+
+    /** La jerga nunca se tiende debajo de la víctima: deja este hueco (px de mundo). */
+    const val MIN_GAP_PX = 34f
+
+    const val FLASH_APROBADO = "APROBADO"
+    const val FLASH_REPROBADO = "REPROBADO"
+}
+
+/**
+ * 🆕 Lo que la pantalla necesita del Examen Extraordinario en cada cuadro (lo arma el VM).
+ * [steps] = flechas físicas + botón; [stepIndex] = cuántos lleva bien (== steps.size al
+ * aprobar); [zone] = dónde va la jerga; [inRange] = el atacante está sobre ella (verde).
+ */
+data class SfExtraordinarioHud(
+    val moveName: String,
+    /** Distancia pedida ya traducida ("CERCA"/"LEJOS"); "" si da igual. */
+    val rangeLabel: String,
+    val steps: List<String>,
+    val stepIndex: Int,
+    val zone: SfFinisherZone,
+    val inRange: Boolean,
+    /** La jerga solo se tiende mientras se espera el comando (no en la cinemática). */
+    val showZone: Boolean,
+    /** "" | [SfFinisherPractice.FLASH_APROBADO] | [SfFinisherPractice.FLASH_REPROBADO] */
+    val flash: String,
+)

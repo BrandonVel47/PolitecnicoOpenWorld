@@ -5,6 +5,7 @@ import ovh.gabrielhuav.pow.domain.models.streetfighter.SfCpuDifficulty
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfDirection
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFighter
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFighterId
+import ovh.gabrielhuav.pow.domain.models.streetfighter.SfExtraordinarioHud
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFinisherVisual
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfFireball
 import ovh.gabrielhuav.pow.domain.models.streetfighter.SfHitSplash
@@ -161,6 +162,11 @@ data class StreetFighterState(
     // ─── 🆕 REMATE FINAL estilo MK ("ACABALO" + cinemática; ver StreetFighterRemate.kt) ───
     // null = no hay remate en curso. Lo llena el VM cada tick; el renderer solo lo pinta.
     override val finisherVisual: SfFinisherVisual? = null,
+
+    // ─── 🆕 EXAMEN EXTRAORDINARIO (práctica de Extraordinarios; ver StreetFighterExtraordinario.kt) ───
+    val extraordinarioActive: Boolean = false,
+    /** Pasos, progreso, jerga y mensaje del intento. null fuera del modo. */
+    override val extraordinarioHud: SfExtraordinarioHud? = null,
 
     // ─── 🆕 MULTIJUGADOR 1v1 (servidor MultiplayerSF/ en Render, relay puro) ───
     val onlineStatus: SfOnlineStatus = SfOnlineStatus.OFF,
