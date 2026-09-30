@@ -198,6 +198,9 @@ fun DrawScope.drawScene(
     if (hideShadow != 0) drawShadow(ctx, theme, images.getValue(theme.shadowImage), state.player, bgFile)
     if (hideShadow != 1) drawShadow(ctx, theme, images.getValue(theme.shadowImage), state.cpu, bgFile)
 
+    // ---- 🆕 EXAMEN EXTRAORDINARIO: jerga en el piso = dónde pararse (roja fuera, verde dentro) ----
+    state.extraordinarioHud?.takeIf { it.showZone }?.let { hud -> drawJerga(ctx, hud.zone, hud.inRange) }
+
     // ---- Peleadores (sheet según el personaje del snapshot) ----
     // 🆕 (2026-07-21) PLACEHOLDER ALPHA: si al peleador le falta la hoja del movimiento en
     // curso, se dibuja con el arte del estudiante de su género en SILUETA NEGRA PIXELADA y
