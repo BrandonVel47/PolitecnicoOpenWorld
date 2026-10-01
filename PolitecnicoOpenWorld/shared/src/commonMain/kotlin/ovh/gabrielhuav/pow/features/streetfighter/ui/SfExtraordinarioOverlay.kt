@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -111,13 +111,13 @@ fun SfExtraordinarioOverlay(
                     text = stringResource(if (showSteps) Res.string.sf_extra_hide_steps else Res.string.sf_extra_steps),
                     onClick = onToggleSteps,
                     color = Color(0xFF6B4E16),
-                    modifier = Modifier.width(118.dp),
+                    modifier = Modifier.widthIn(min = 118.dp), // crece con letra grande (H-3)
                 )
                 PowButton(
                     text = stringResource(Res.string.sf_exit),
                     onClick = onExit,
                     color = Color(0xFF8B1538),
-                    modifier = Modifier.width(118.dp),
+                    modifier = Modifier.widthIn(min = 118.dp), // crece con letra grande (H-3)
                 )
             }
         }
